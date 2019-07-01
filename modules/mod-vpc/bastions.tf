@@ -16,3 +16,18 @@ resource "aws_instance" "bastion" {
     Name = "${var.env_name}-bastion"
   }
 }
+
+# Define app server inside the private subnet
+resource "aws_instance" "app-server" {
+  count                  = "${var.bastion_count}"
+  ami                    = "${var.ami}"
+  instance_type          = "t1.micro"
+  key_name               = "${var.bastion_key}"
+  subnet_id              = "${element(aws_subnet.app-subnet.*.id, count.index)}"
+  vpc_security_group_ids = ["${aws_security_group.sgApp.id}"]
+  source_dest_check      = false
+
+  tags = {
+    Name = "${var.env_name}-database"
+  }
+}

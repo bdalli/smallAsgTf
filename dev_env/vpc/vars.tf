@@ -50,5 +50,5 @@ variable "ami" {
 
 variable "key_path" {
   description = "SSH Public Key path"
-  default     = "/Users/brettdalli/.ssh/keys/bastion_id_rsa.pub"
+  default     = ""
 }
