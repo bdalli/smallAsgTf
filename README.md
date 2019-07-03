@@ -1,2 +1,2 @@
-# small_asg_tf
+# smallAsgTf
 small asg service created in terraform 
