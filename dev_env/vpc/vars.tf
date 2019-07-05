@@ -1,3 +1,5 @@
+# dev_env vpc and asg variables with values
+
 variable "env_name" {
   description = "Environment Name"
   default     = "dev-env"
@@ -9,7 +11,7 @@ variable "aws_az" {
   default     = "eu-west-1a,eu-west-1b,eu-west-1c"
 }
 variable "aws_az_count" {
-  default = 1
+  default = 2
 }
 
 variable "bastion_count" {

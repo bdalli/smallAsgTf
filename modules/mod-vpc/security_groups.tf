@@ -1,7 +1,8 @@
 # Define the security group for public subnet
 resource "aws_security_group" "sgWeb" {
   name        = "${var.env_name}-pubSg"
-  description = "Allow incoming HTTP connections & SSH access"
+  description = "Allow incoming HTTP connections & Bastion ssh access"
+
 
   ingress {
     from_port   = 80
@@ -11,25 +12,13 @@ resource "aws_security_group" "sgWeb" {
   }
 
   ingress {
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  ingress {
-    from_port   = -1
-    to_port     = -1
-    protocol    = "icmp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  ingress {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = ["${var.vpc_cidr}"]
   }
+
+
 
   vpc_id = "${aws_vpc.vpc.id}"
 
@@ -38,36 +27,53 @@ resource "aws_security_group" "sgWeb" {
   }
 }
 
-
-# Define the security group for private subnet
-resource "aws_security_group" "sgApp" {
-  name        = "${var.env_name}-appSg"
-  description = "Allow traffic from public subnet"
-
-  ingress {
-    from_port   = 3306
-    to_port     = 3306
-    protocol    = "tcp"
-    cidr_blocks = ["${aws_vpc.vpc.cidr_block}"]
-  }
-
-  ingress {
-    from_port   = -1
-    to_port     = -1
-    protocol    = "icmp"
-    cidr_blocks = ["${aws_vpc.vpc.cidr_block}"]
-  }
+resource "aws_security_group" "bastionSg" {
+  name        = "${var.env_name}-bastionSg"
+  description = "Bastion ssh inbound from Web and outbound to vpc"
 
   ingress {
     from_port   = 22
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = ["${aws_vpc.vpc.cidr_block}"]
+    cidr_blocks = ["${var.vpc_cidr}"]
   }
 
   vpc_id = "${aws_vpc.vpc.id}"
 
   tags = {
-    Name = "${var.env_name}-sgApp"
+    Name = "${var.env_name}-bastionSg"
+  }
+}
+
+resource "aws_security_group" "smallAsgElbSg" {
+  name        = "${var.env_name}-smallAsgElb"
+  description = "ELB incoming HTTP connections"
+
+
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = -1
+    cidr_blocks = ["${var.vpc_cidr}"]
+
+  }
+  vpc_id = "${aws_vpc.vpc.id}"
+
+  tags = {
+    Name = "${var.env_name}-smallAsgElbSg"
   }
 }
