@@ -23,7 +23,7 @@ resource "aws_s3_bucket" "elb_access_logs" {
     }
   }
 }
-# IAM policy and doc attach
+# IAM policy for s3 and ec2 with trust 
 data "aws_iam_policy_document" "s3_lb_write" {
   policy_id = "s3_lb_write"
 
@@ -37,11 +37,31 @@ data "aws_iam_policy_document" "s3_lb_write" {
     }
   }
 }
+data "aws_iam_policy_document" "ec2_read_s3_elb_logs" {
+  policy_id = "ec2_read_s3_elb_logs"
+  statement {
+    actions = [
+      "s3:GetObject",
+      "s3:ListObject"
+    ]
+    resources = ["arn:aws:s3:::smallasg-access-logs/*"]
+
+    principals {
+      identifiers = ["${data.aws_elb_service_account.main.arn}"]
+      type        = "AWS"
+    }
+  }
+}
+
 resource "aws_s3_bucket_policy" "s3_lb_write" {
   bucket = "${aws_s3_bucket.elb_access_logs.id}"
   policy = "${data.aws_iam_policy_document.s3_lb_write.json}"
 }
 
+resource "aws_s3_bucket_policy" "ec2_read_s3_elb_logs" {
+  bucket = "${aws_s3_bucket.elb_access_logs.id}"
+  policy = "${data.aws_iam_policy_document.ec2_read_s3_elb_logs.json}"
+}
 
 # asg launch config and autoscaling group
 
