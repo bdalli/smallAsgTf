@@ -1,3 +1,48 @@
+# Data refs
+data "aws_elb_service_account" "main" {}
+
+
+
+# Create a s3 bucket for elb logs
+
+resource "aws_s3_bucket" "elb_access_logs" {
+  bucket = "smallasg-access-logs"
+  acl    = "private"
+  lifecycle_rule {
+    id      = "log"
+    enabled = true
+
+    prefix = "log/"
+
+    tags = {
+      "rule"      = "log"
+      "autoclean" = "true"
+    }
+    expiration {
+      days = 7
+    }
+  }
+}
+# IAM policy and doc attach
+data "aws_iam_policy_document" "s3_lb_write" {
+  policy_id = "s3_lb_write"
+
+  statement {
+    actions   = ["s3:PutObject"]
+    resources = ["arn:aws:s3:::smallasg-access-logs/*"]
+
+    principals {
+      identifiers = ["${data.aws_elb_service_account.main.arn}"]
+      type        = "AWS"
+    }
+  }
+}
+resource "aws_s3_bucket_policy" "s3_lb_write" {
+  bucket = "${aws_s3_bucket.elb_access_logs.id}"
+  policy = "${data.aws_iam_policy_document.s3_lb_write.json}"
+}
+
+
 # asg launch config and autoscaling group
 
 resource "aws_launch_configuration" "smallAsg_launch_config" {
@@ -22,16 +67,18 @@ resource "aws_launch_configuration" "smallAsg_launch_config" {
 }
 
 resource "aws_autoscaling_group" "smallAsg_asg" {
-  count = "${var.aws_az_count}"
+  name = "smallAsg"
+
   launch_configuration = "${aws_launch_configuration.smallAsg_launch_config.id}"
-  #availability_zones = "${var.aws_az}"
-  vpc_zone_identifier = ["${element(aws_subnet.public-subnet.*.id, count.index)}"]
+
+  vpc_zone_identifier = "${aws_subnet.public-subnet.*.id}"
+  #vpc_zone_identifier = "${data.aws_subnet.ids.all.ids}"
 
   load_balancers = ["${aws_elb.smallAsg_lb.name}"]
   health_check_type = "ELB"
   health_check_grace_period = "300"
 
-  min_size = 1
+  min_size = 2
   max_size = 3
 
   tag {
@@ -42,7 +89,7 @@ resource "aws_autoscaling_group" "smallAsg_asg" {
   }
 }
 
-# smallAsg Loab Balancer
+# smallAsg Load Balancer
 
 resource "aws_elb" "smallAsg_lb" {
   name = "smallAsgELB"
@@ -50,6 +97,13 @@ resource "aws_elb" "smallAsg_lb" {
   #availability_zones = "${var.aws_az}"
   subnets = "${aws_subnet.public-subnet.*.id}"
   security_groups = ["${aws_security_group.smallAsgElbSg.id}"]
+
+  access_logs {
+    bucket = "${aws_s3_bucket.elb_access_logs.bucket}"
+    bucket_prefix = "log"
+    interval = 60
+    enabled = true
+  }
 
   listener {
 
@@ -69,21 +123,24 @@ resource "aws_elb" "smallAsg_lb" {
   }
 }
 
+## Alarm setup for smallAsgElb
+resource "aws_cloudwatch_metric_alarm" "asg_unhealthy_host_alert" {
 
+  alarm_name = "smallAsg-${var.env_name}-unhealthy-host"
+  alarm_description = "Health check validation failed for public ALB"
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  dimensions = {
+    LoadBalancer = "${aws_elb.smallAsg_lb.name}"
+    TargetGroup = "${element(aws_autoscaling_group.smallAsg_asg.*.name, 0)}"
+  }
+  evaluation_periods = "1"
+  metric_name = "UnHealthyHostCount"
+  namespace = "AWS/ApplicationELB"
+  period = "60"
+  statistic = "Sum"
+  threshold = "1"
+  unit = "Percent"
+  # alarm_actions 		      =  need to add a action here -- suggest email sns arn 
 
-# resource "aws_instance" "smallAsgInstance" {
-#   count = "${var.bastion_count}"
-#   ami = "${var.ami}"
-#   instance_type = "t1.micro"
-#   #key_name                    = "${var.bastion_key}"
-#   subnet_id = "${element(aws_subnet.public-subnet.*.id, count.index)}"
-#   vpc_security_group_ids = ["${aws_security_group.sgWeb.id}"]
-#   associate_public_ip_address = true
-
-#   source_dest_check = false
-
-
-#   tags = {
-#     Name = "${var.env_name}-smallAsg-ec2"
-#   }
-# }
+  treat_missing_data = "notBreaching"
+}

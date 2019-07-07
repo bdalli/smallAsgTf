@@ -13,6 +13,10 @@ variable "vpc_cidr" {}
 variable "public_subnet_cidr" {
   type = "list"
 }
+variable "public_subnets" {
+
+}
+
 variable "app_subnet_cidr" {
   type = "list"
 }
@@ -27,3 +31,5 @@ variable "bastion_count" {
 
   default = 1
 }
+
+variable "acc_id" {}

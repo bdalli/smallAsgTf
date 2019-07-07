@@ -54,3 +54,12 @@ variable "key_path" {
   description = "SSH Public Key path"
   default     = ""
 }
+
+variable "acc_data" {
+  description = "Account id"
+  default     = "125102723833"
+
+}
+
+
+

@@ -23,10 +23,13 @@ module vpc {
   vpc_cidr           = "${var.vpc_cidr}"
   public_subnet_cidr = "${split(",", var.public_subnet_cidr)}"
   app_subnet_cidr    = "${split(",", var.app_subnet_cidr)}"
-
+  public_subnets     = "${var.public_subnet_cidr}"
   # ec2 vars
   ami           = "${var.ami}"
   bastion_key   = "${var.bastion_key}"
   bastion_count = "${var.aws_az_count}"
+
+  # acc vars
+  acc_id = "${var.acc_data}"
 
 }

@@ -15,6 +15,6 @@ output "sgWeb_security_group" {
   value = "${aws_security_group.sgWeb.id}"
 }
 
-# output "elb_dns_name" {
-#   value = "${aws_elb.smallAsg_lb.dns_name}"
-# }
+output "elb_dns_name" {
+  value = "${aws_elb.smallAsg_lb.dns_name}"
+}
